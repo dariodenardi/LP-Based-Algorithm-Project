@@ -27,18 +27,12 @@
     <ClCompile Include="CHECK_CONS.cpp">
       <Filter>File di origine</Filter>
     </ClCompile>
-    <ClCompile Include="GMKP_CPX.cpp">
+    <ClCompile Include="LPBASED_CPX.cpp">
       <Filter>File di origine</Filter>
-    </ClCompile>
-    <ClCompile Include="pugixml.cpp">
-      <Filter>File di risorse</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CHECK_CONS.h">
-      <Filter>File di intestazione</Filter>
-    </ClInclude>
-    <ClInclude Include="GMKP_CPX.h">
       <Filter>File di intestazione</Filter>
     </ClInclude>
     <ClInclude Include="INSTANCE.h">
@@ -47,11 +41,8 @@
     <ClInclude Include="UTILITY.h">
       <Filter>File di intestazione</Filter>
     </ClInclude>
-    <ClInclude Include="pugixml.hpp">
-      <Filter>File di risorse</Filter>
-    </ClInclude>
-    <ClInclude Include="pugiconfig.hpp">
-      <Filter>File di risorse</Filter>
+    <ClInclude Include="LPBASED_CPX.h">
+      <Filter>File di intestazione</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

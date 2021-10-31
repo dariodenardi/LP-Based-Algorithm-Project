@@ -58,29 +58,22 @@ int checkSolution(double *x, double objval, int n, int m, int r, int * b, int * 
 	}
 
 	// check constraint 4
-	for (int i = 0; i < m; i++) {
-		for (int k = 0; k < r; k++) {
+	sum = 0;
+	for (int k = 0; k < r; k++) {
+		int indexes_prev = k > 0 ? indexes[k - 1] : 0;
+		for (int z = 0; z < indexes[k] - indexes_prev; z++) {
 
-			sum = 0;
+			for (int i = 0; i < m; i++) {
 
-			for (int j = 0; j < n; j++) {
+				sum = x[n * i + classes[z + indexes_prev]] - x[n * m + i * r + k];
+				//std::cout << x[n * i + classes[z + indexes_prev]] << " " << x[n * m + i * r + k] << std::endl;
 
-				int indexes_prev = k > 0 ? indexes[k - 1] : 0;
-				for (int z = 0; z < indexes[k] - indexes_prev; z++) {
+				if (sum > 0 && x[m*n + i * r + k] == 0)
+					return 4;
 
-					if (classes[z + indexes_prev] == j) {
-						sum += x[i * n + j];
-					}
-				}
+			} // k (classes)
+		} // n (items)
 
-			} // j (items)
-
-			//std::cout << "CLASS " << x[m*n + i * r + k] << " ITEM " << sum << " " << std::endl;
-
-			if (sum > 0 && x[m*n + i * r + k] == 0)
-				return 4;
-
-		} // k (classes)
 	} // i (knapsacks)
 
 	// check optimal value

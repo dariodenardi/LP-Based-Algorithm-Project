@@ -1,4 +1,4 @@
-#include "GMKP_CPX.h"
+#include "LPBASED_CPX.h"
 
 #define VARNAMES //use variable names
 #define CONSNAMES //use constraint names
@@ -6,7 +6,7 @@
 #define WRITELP //write lp problem to file
 #define WRITELOG //write log
 
-int solveGMKP_CPX(int n, int m, int r, int * b, int * weights, int * profits, int * capacities, int * setups, int * classes, int * indexes, char * modelFilename, char * logFilename, int TL, bool intflag) {
+int solve(int n, int m, int r, int * b, int * weights, int * profits, int * capacities, int * setups, int * classes, int * indexes, char * modelFilename, char * logFilename, int TL, double *objval, double **x) {
 
 	/*******************************************/
 	/*     set CPLEX environment and lp        */
@@ -14,7 +14,6 @@ int solveGMKP_CPX(int n, int m, int r, int * b, int * weights, int * profits, in
 	CPXENVptr env;
 	CPXLPptr lp;
 	int status;
-	double objval;
 
 	/* open CPLEX environment
 	 * */
@@ -53,17 +52,17 @@ int solveGMKP_CPX(int n, int m, int r, int * b, int * weights, int * profits, in
 	/*******************************************/
 	/*     add CPLEX columns                   */
 	/*******************************************/
-	/* order of the variables (x_ij) i=1...m (knapsack index), j = 1...n (object index) in CPLEX lp
+	/* order of the variables (x_ij) i = 1...m (knapsack index), j = 1...n (object index) in CPLEX lp
 	 *
-	 * e.g., m=2, n=3
+	 * e.g., m = 2, n = 3
 	 *
 	 * [x_11, x_12, x_13, x_21, x_22, x_23]
 	 *
 	 * */
 
-	/* order of the variables (y_ik) i=1...m (knapsack index), k = 1...r (classes index) in CPLEX lp
+	/* order of the variables (y_ik) i = 1...m (knapsack index), k = 1...r (classes index) in CPLEX lp
 	 *
-	 * e.g., r=2, k=2
+	 * e.g., r = 2, k = 2
 	 *
 	 * [y_11, y_12, y_21, y_22]
 	 *
@@ -106,8 +105,6 @@ int solveGMKP_CPX(int n, int m, int r, int * b, int * weights, int * profits, in
 			obj[col] = profits[i*n + j];
 			lb[col] = 0.0;
 			ub[col] = 1.0;
-			if (intflag)
-				ctype[col] = 'B';
 
 #ifdef VARNAMES
 			sprintf(vnames[col], "x_%d_%d", i + 1, j + 1);
@@ -123,8 +120,6 @@ int solveGMKP_CPX(int n, int m, int r, int * b, int * weights, int * profits, in
 			obj[col] = 0;
 			lb[col] = 0.0;
 			ub[col] = 1.0;
-			if (intflag)
-				ctype[col] = 'B';
 
 #ifdef VARNAMES
 			sprintf(vnames[col], "y_%d_%d", i + 1, k + 1);
@@ -135,10 +130,7 @@ int solveGMKP_CPX(int n, int m, int r, int * b, int * weights, int * profits, in
 
 	/* add columns to CPLEX LP
 	 * */
-	if (intflag)
-		status = CPXnewcols(env, lp, ccnt, obj, lb, ub, ctype, vnames);
-	else
-		status = CPXnewcols(env, lp, ccnt, obj, lb, ub, NULL, vnames);
+	status = CPXnewcols(env, lp, ccnt, obj, lb, ub, NULL, vnames);
 	
 	if (status) {
 		std::cout << "error: GMKP CPXnewcols failed...exiting" << std::endl;
@@ -161,7 +153,7 @@ int solveGMKP_CPX(int n, int m, int r, int * b, int * weights, int * profits, in
 	/*******************************************/
 
 	/*	constraint (1):
-		sum(j = 1 ... n) w_j * x_ij + sum(k = 1 ... r) s_k * y_ik <= C_i   for all i = 1 .. m
+		\sum_{j = 1 ... n} w_j * x_ij + \sum_{k = 1 ... r} s_k * y_ik <= C_i		\forall i \in M
 	 * */
 	int rcnt = m; // number of constraints (rows)
 	int nzcnt = ccnt; // number of total variables (columns)
@@ -187,7 +179,7 @@ int solveGMKP_CPX(int n, int m, int r, int * b, int * weights, int * profits, in
 		sense[i] = 'L';
 		rhs[i] = capacities[i];
 
-		// sum(j = 1 ... n) w_j * x_ij
+		// \sum_{j = 1 ... n} w_j * x_ij
 		for (int j = 0; j < n; j++)
 		{
 			rmatind[cc] = i * n + j; // variable number
@@ -195,7 +187,7 @@ int solveGMKP_CPX(int n, int m, int r, int * b, int * weights, int * profits, in
 			cc++;
 		}
 
-		// sum(k = 1 ... r) s_k * y_ik 
+		// \sum_{k = 1 ... r} s_k * y_ik
 		for (int k = 0; k < r; k++)
 		{
 			rmatind[cc] = n*m + i * r + k;
@@ -229,7 +221,7 @@ int solveGMKP_CPX(int n, int m, int r, int * b, int * weights, int * profits, in
 #endif
 
 	/*	constraint (2):
-		sum(i = 1 ... m) x_ij <= 1       for all j = 1 .. n
+		\sum_{i = 1 ... m} x_ij <= 1       \forall j \in N
 	 * */
 
 	rcnt = n; // number of constraints (rows)
@@ -290,7 +282,7 @@ int solveGMKP_CPX(int n, int m, int r, int * b, int * weights, int * profits, in
 #endif
 
 	/*	constraint (3):
-		sum(i = 1 ... m) y_ik <= 1       for all k = 1 .. r
+		\sum_{i = 1 ... m} y_ik <= b_k		\forall k \in K
 	 * */
 
 	rcnt = r; // number of constraints (rows)
@@ -351,12 +343,12 @@ int solveGMKP_CPX(int n, int m, int r, int * b, int * weights, int * profits, in
 #endif
 
 	/*	constraint (4):
-		sum(j belongs Rk) x_ij <= n * y_ik       for all k = 1 .. r
-		sum(j belongs Rk) x_ij - n * y_ik <= 0   for all k = 1 .. r
+		x_ij <= y_ik		\forall i \in M, \forall k \in K, \forall j \in R_k
+		x_ij - y_ik <= 0	\forall i \in M, \forall k \in K, \forall j \in R_k
 	 * */
 
-	rcnt = r*m; // number of constraints (rows)
-	nzcnt = n*m + r*m; // number of total variables (columns)
+	rcnt = n*m; // number of constraints (rows)
+	nzcnt = n * m + n * m; // number of total variables (columns)
 
 	// allocate memory for constraint
 	rmatbeg = new int[rcnt];
@@ -373,38 +365,34 @@ int solveGMKP_CPX(int n, int m, int r, int * b, int * weights, int * profits, in
 
 	// init counter
 	cc = 0;
+	int prov2 = 0;
 	// fill in rows for multiple knapsack constraints
-	for (int i = 0; i < m; i++) {
-		for (int k = 0; k < r; k++) {
+	for (int k = 0; k < r; k++) {
+		int indexes_prev = k > 0 ? indexes[k - 1] : 0;
+		for (int z = 0; z < indexes[k] - indexes_prev; z++) {
 
-			// - n * y_ik       for all k = 1 .. r
-			rmatbeg[i * r + k] = cc; // starting index of the n-th constraint
-			sense[i * r + k] = 'L';
-			rhs[i * r + k] = 0.0;
+			for (int i = 0; i < m; i++) {
 
-			rmatind[cc] = n * m + i * r + k; // variable number
-			rmatval[cc] = -n;
-			cc++;
+				rmatbeg[prov2] = cc; // starting index of the n-th constraint
+				sense[prov2] = 'L';
+				rhs[prov2] = 0.0;
 
-			// sum(j belongs Rk) x_ij      for all k = 1 .. r
-			for (int j = 0; j < n; j++) {
+				rmatind[cc] = n * m + i * r + k; // variable number
+				rmatval[cc] = -1;
+				cc++;
 
-				int indexes_prev = k > 0 ? indexes[k - 1] : 0;
-				for (int z = 0; z < indexes[k] - indexes_prev; z++) {
-
-					if (classes[z + indexes_prev] == j) {
-						rmatind[cc] = i * n + j; // variable number
-						rmatval[cc] = 1.0;
-						cc++;
-					}
-				}
-
-			} // j (items)
+				rmatind[cc] = n * i + classes[z + indexes_prev]; // variable number
+				rmatval[cc] = 1;
+				cc++;
 
 #ifdef CONSNAMES
-			sprintf(cnames[i * r + k], "dependent_decision_%d", i * r + k + 1);
+				sprintf(cnames[prov2], "dependent_decision_%d", prov2 + 1);
 #endif
-		} // k (classes)
+
+				prov2++;
+			} // k (classes)
+		} // n (items)
+
 	} // i (knapsacks)
 
 	/* add rows for multiple knapsack constraints
@@ -427,14 +415,111 @@ int solveGMKP_CPX(int n, int m, int r, int * b, int * weights, int * profits, in
 	delete cnames;
 #endif
 
+	/*******************************************/
+	/*   change Upper/Lower bown with CPLEX    */
+	/*******************************************/
+	
+	bool allInt = true;
+	int indexBestValue = 0;
+	double bestValue = -1;
+	int *indices = new int[1];
+	double *bd = new double[1];
+	double *p = *x;
+
+	// check y*
+	for (int i = 0; i < m*r; i++) {
+		double value = p[m * n + i];
+		int truncatedValue = (int)value;
+
+		// if y* is 1
+		if (value == 1) {
+			bd[0] = 1;
+			indices[0] = m * n + i;
+			status = CPXchgbds(env, lp, 1, indices, "L", bd);
+			if (status) {
+				std::cout << "error: GMKP failed to change CPX bounds...exiting" << std::endl;
+				exit(1);
+			}
+		}
+		// find best value
+		else if (truncatedValue != value) {
+			allInt = false;
+			if (p[m * n + i] > bestValue) {
+				bestValue = p[m * n + i];
+				indexBestValue = m * n + i;
+			}
+
+		} // if truncated
+
+	} // for y*
+
+	// all y* are integers
+	// check x*
+	if (allInt) {
+
+		for (int i = 0; i < n*m; i++) {
+			double value = p[i];
+			int truncatedValue = (int)value;
+
+			// if x* is 1
+			if (value == 1) {
+				bd[0] = 1;
+				indices[0] = i;
+				status = CPXchgbds(env, lp, 1, indices, "L", bd);
+				if (status) {
+					std::cout << "error: GMKP failed to change CPX bounds...exiting" << std::endl;
+					exit(1);
+				}
+			}
+			// find best value
+			else if (truncatedValue != value) {
+				allInt = false;
+				if (p[i] > bestValue) {
+					bestValue = p[i];
+					indexBestValue = i;
+				}
+
+			} // if truncated
+
+		} // for x*
+
+	}
+
+	// there is a fractional value
+	if (!allInt) {
+		p[indexBestValue] = 1;
+
+		// check contraint 1
+		int statusCheck = checkSolution(p, *objval, n, m, r, b, weights, profits, capacities, setups, classes, indexes);
+
+		// solo il vincolo 1?
+		if (statusCheck == 1) {
+			bd[0] = 0;
+			indices[0] = indexBestValue;
+			status = CPXchgbds(env, lp, 1, indices, "U", bd);
+			if (status) {
+				std::cout << "error: GMKP failed to change CPX bounds...exiting" << std::endl;
+				exit(1);
+			}
+		}
+	}
+
+	delete[] indices;
+	delete[] bd;
+
+	//
+
 #ifdef WRITELP
-	CPXwriteprob(env, lp, modelFilename, NULL);
+	status = CPXwriteprob(env, lp, modelFilename, NULL);
+	if (status) {
+		std::cout << "error: GMKP failed to write MODEL file" << std::endl;
+	}
 #endif
 
 #ifdef WRITELOG
 	status = CPXsetlogfilename(env, logFilename, "w");
 	if (status) {
-		std::cout << "error: GMKP failed to set LOG file" << std::endl;
+		std::cout << "error: GMKP failed to write LOG file" << std::endl;
 	}
 #endif
 
@@ -465,12 +550,9 @@ int solveGMKP_CPX(int n, int m, int r, int * b, int * weights, int * profits, in
 		exit(1);
 	}
 
-	/* solve with CPLEX "mipopt" (if mixed-integer)
+	/* solve with CPLEX "lpopt"
 	 * */
-	if (intflag)
-		status = CPXmipopt(env, lp);
-	else
-		status = CPXlpopt(env, lp);
+	status = CPXlpopt(env, lp);
 
 	if (status) {
 		std::cout << "error: GMKP failed to optimize...exiting" << std::endl;
@@ -491,7 +573,7 @@ int solveGMKP_CPX(int n, int m, int r, int * b, int * weights, int * profits, in
 	/* OBJECTIVE VALUE
 	 * access objective function value
 	 * */
-	status = CPXgetobjval(env, lp, &objval);
+	status = CPXgetobjval(env, lp, objval);
 	if (status) {
 		std::cout << "error: GMKP failed to obtain objective value...exiting" << std::endl;
 		exit(1);
@@ -500,7 +582,7 @@ int solveGMKP_CPX(int n, int m, int r, int * b, int * weights, int * profits, in
 	/* BEST BOUND
 	 * access the currently best known bound of all the remaining open nodes in a branch-and-bound tree
 	 * */
-	double objval_p;
+	 double objval_p;
 
 	CPXgetbestobjval(env, lp, &objval_p);
 	if (status) {
@@ -542,57 +624,40 @@ int solveGMKP_CPX(int n, int m, int r, int * b, int * weights, int * profits, in
 	/* NUMBER OF NODES
 	 * access the number of nodes used to solve a mixed integer problem
 	 * */
-	int nnodes = CPXgetnodecnt(env, lp);
-
-	/*******************************************/
-	/*  write output                           */
-	/*******************************************/
-
-	if (intflag == false)
-		std::cout << "Root UB: " << objval << std::endl;
-	std::cout << "best UB: " << objval_p << std::endl;
-	if (intflag == true)
-		std::cout << "cut off: " << objval << std::endl;
-	std::cout << "opt: " << solstat << std::endl;
-	std::cout << "BB-node: " << nnodes << std::endl;
+	//int nnodes = CPXgetnodecnt(env, lp);
 
 	/*
 	* GET VECTOR X
 	* access the vector x to find solution
 	*/
 
-	if (intflag) {
-		double *x;
-		x = new double[ccnt];
+	*x = new double[ccnt];
 
-		status = CPXsolution(env, lp, &solstat, &objval_p, x, NULL, NULL, NULL);
-		if (status) {
-			std::cout << "error: GMKP failed to check contraints of solution...exiting" << std::endl;
-			exit(1);
-		}
+	status = CPXsolution(env, lp, &solstat, &objval_p, *x, NULL, NULL, NULL);
+	if (status) {
+		std::cout << "error: GMKP failed to check contraints of solution...exiting" << std::endl;
+		exit(1);
+	}
 
-		int statusCheck = checkSolution(x, objval, n, m, r, b, weights, profits, capacities, setups, classes, indexes);
+	int statusCheck = checkSolution(*x, *objval, n, m, r, b, weights, profits, capacities, setups, classes, indexes);
 
-		if (statusCheck == 0) {
-			std::cout << "All constraints are ok" << std::endl;
-		}
-		else if (statusCheck == 1) {
-			std::cout << "Constraint violated: weights of the items are greater than the capacity..." << std::endl;
-		}
-		else if (statusCheck == 2) {
-			std::cout << "Constraint violated: item is assigned to more than one knapsack..." << std::endl;
-		}
-		else if (statusCheck == 3) {
-			std::cout << "Constraint violated: class is assigned to more than one knapsack..." << std::endl;
-		}
-		else if (statusCheck == 4) {
-			std::cout << "Constraint violated: items of class are not assigned to knapsack..." << std::endl;
-		}
-		else if (statusCheck == 5) {
-			std::cout << "Optimal solution violeted..." << std::endl;
-		}
-
-		delete[] x;
+	if (statusCheck == 0) {
+		std::cout << "All constraints are ok" << std::endl;
+	}
+	else if (statusCheck == 1) {
+		std::cout << "Constraint violated: weights of the items are greater than the capacity..." << std::endl;
+	}
+	else if (statusCheck == 2) {
+		std::cout << "Constraint violated: item is assigned to more than one knapsack..." << std::endl;
+	}
+	else if (statusCheck == 3) {
+		std::cout << "Constraint violated: class is assigned to more than one knapsack..." << std::endl;
+	}
+	else if (statusCheck == 4) {
+		std::cout << "Constraint violated: items of class are not assigned to knapsack..." << std::endl;
+	}
+	else if (statusCheck == 5) {
+		std::cout << "Optimal solution violeted..." << std::endl;
 	}
 
 	/*free CPLEX

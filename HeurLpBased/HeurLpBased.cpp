@@ -2,24 +2,23 @@
 
 #include <time.h>
 
-#include "pugixml.hpp"
-
 #include "INSTANCE.h"
-#include "GMKP_CPX.h"
+#include "LPBASED_CPX.h"
 #include "CHECK_CONS.h"
 
 using namespace std;
 
 int main(int argc, char **argv)
 {
-	if (argc < 2) {
+	if (argc < 3) {
 		std::cout << "invalid parameters!\n";
-		std::cout << "parameters: [nameInstance]\n";
+		std::cout << "parameters: [nameInstance] [timeout]\n";
 		return -1;
 	}
 
 	// input parameters
 	char *instance_name = argv[1];
+	int TL = atoi(argv[2]);
 	int stringLength = 0;
 
 	bool ok = true;
@@ -34,46 +33,25 @@ int main(int argc, char **argv)
 	std::cout << "instance name: " << instance_name << std::endl;
 	std::cout << std::endl;
 
-	int num = 25;
 	// data for GMKP instance
 	int n; // number of objects
 	int m; // number of knapsacks
 	int r; // number of subsets
-	int *b = &num; // item can be assign at most to bk knapsacks // num points to somewhere random
-	int *profits = &num; // array for linear profit term
-	int *weights = &num; // array of weights
-	int *capacities = &num; // array of knapsack capacities
-	int *setups = &num; // array of setup
-	int *classes = &num; // array of classes
-	int *indexes = &num; // array of indexes
+	int *b = NULL; // item can be assign at most to bk knapsacks
+	int *profits = NULL; // array for linear profit term
+	int *weights = NULL; // array of weights
+	int *capacities = NULL; // array of knapsack capacities
+	int *setups = NULL; // array of setup
+	int *classes = NULL; // array of classes
+	int *indexes = NULL; // array of indexes
 
 	clock_t start, end;
 	double time;
+	double objval;
+	double *x = NULL;
 	
 	char modelFilename[200];
 	char logFilename[200];
-
-	// read configuration
-	pugi::xml_document doc;
-
-	pugi::xml_parse_result result = doc.load_file("config.xml");
-	if (result) {
-		std::cout << "config.xml loaded correctly!\n";
-	}
-	else {
-		std::cout << "config.xml not found or not written correctly!\n";
-		return -2;
-	}
-
-	std::cout << "Parameters" << std::endl;
-
-	// library
-	std::string library = doc.child("Config").child("library").attribute("name").as_string();
-	std::cout << "library used: " << library << std::endl;
-
-	// timeout
-	int TL = doc.child("Config").child("timeout").attribute("value").as_int();
-	std::cout << "timeout: " << TL << "s" << std::endl;
 
 	// read file
 	int status = readInstance(instance_name, n, m, r, weights, capacities, profits, classes, indexes, setups, b);
@@ -94,7 +72,34 @@ int main(int argc, char **argv)
 
 	printInstance(n, m, r, weights, capacities, profits, classes, indexes, setups, b);
 
-	status = solveGMKP_CPX(n, m, r, b, weights, profits, capacities, setups, classes, indexes, modelFilename, logFilename, TL, false);
+	status = solve(n, m, r, b, weights, profits, capacities, setups, classes, indexes, modelFilename, logFilename, TL, &objval, &x);
+
+	// print output
+	if (status)
+		std::cout << "An error has occurred! Error number : " << status << std::endl;
+	else
+		std::cout << "The function was performed correctly!" << std::endl;
+
+	int truncated = (int)objval;
+	while (objval != truncated) {
+
+		for (int i = 0; i < n*m + m*r; i++) {
+			std::cout << x[i] << std::endl;
+		}
+		printf("\n\n");
+
+		status = solve(n, m, r, b, weights, profits, capacities, setups, classes, indexes, modelFilename, logFilename, TL, &objval, &x);
+
+		// print output
+		if (status)
+			std::cout << "An error has occurred! Error number : " << status << std::endl;
+		else
+			std::cout << "The function was performed correctly!" << std::endl;
+
+		truncated = (int)objval;
+	}
+
+	std::cout << "Result: " << objval << std::endl;
 
 	// free memory
 	free(b);
@@ -104,6 +109,7 @@ int main(int argc, char **argv)
 	free(setups);
 	free(classes);
 	free(indexes);
+	free(x);
 
 	return 0;
 }

@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="UTF-8" ?>
-<Config FormatVersion="2">
-	<library name="callable library" /> <!-- name="concert" name="callable library" -->
-	<timeout value="600" />
-</Config>

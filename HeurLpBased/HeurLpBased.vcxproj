@@ -159,18 +159,15 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="CHECK_CONS.cpp" />
-    <ClCompile Include="GMKP_CPX.cpp" />
+    <ClCompile Include="LPBASED_CPX.cpp" />
     <ClCompile Include="HeurLpBased.cpp" />
     <ClCompile Include="INSTANCE.cpp" />
-    <ClCompile Include="pugixml.cpp" />
     <ClCompile Include="UTILITY.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CHECK_CONS.h" />
-    <ClInclude Include="GMKP_CPX.h" />
+    <ClInclude Include="LPBASED_CPX.h" />
     <ClInclude Include="INSTANCE.h" />
-    <ClInclude Include="pugiconfig.hpp" />
-    <ClInclude Include="pugixml.hpp" />
     <ClInclude Include="UTILITY.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
