@@ -158,14 +158,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="CHECK_CONS.cpp" />
+    <ClCompile Include="CHECK_CONS_V2.cpp" />
     <ClCompile Include="LPBASED_CPX.cpp" />
     <ClCompile Include="HeurLpBased.cpp" />
     <ClCompile Include="INSTANCE.cpp" />
     <ClCompile Include="UTILITY.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="CHECK_CONS.h" />
+    <ClInclude Include="CHECK_CONS_V2.h" />
     <ClInclude Include="LPBASED_CPX.h" />
     <ClInclude Include="INSTANCE.h" />
     <ClInclude Include="UTILITY.h" />

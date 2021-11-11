@@ -24,17 +24,14 @@
     <ClCompile Include="UTILITY.cpp">
       <Filter>File di origine</Filter>
     </ClCompile>
-    <ClCompile Include="CHECK_CONS.cpp">
+    <ClCompile Include="LPBASED_CPX.cpp">
       <Filter>File di origine</Filter>
     </ClCompile>
-    <ClCompile Include="LPBASED_CPX.cpp">
+    <ClCompile Include="CHECK_CONS_V2.cpp">
       <Filter>File di origine</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="CHECK_CONS.h">
-      <Filter>File di intestazione</Filter>
-    </ClInclude>
     <ClInclude Include="INSTANCE.h">
       <Filter>File di intestazione</Filter>
     </ClInclude>
@@ -42,6 +39,9 @@
       <Filter>File di intestazione</Filter>
     </ClInclude>
     <ClInclude Include="LPBASED_CPX.h">
+      <Filter>File di intestazione</Filter>
+    </ClInclude>
+    <ClInclude Include="CHECK_CONS_V2.h">
       <Filter>File di intestazione</Filter>
     </ClInclude>
   </ItemGroup>

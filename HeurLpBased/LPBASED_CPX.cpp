@@ -6,7 +6,7 @@
 #define WRITELP //write lp problem to file
 #define WRITELOG //write log
 
-int solve(int n, int m, int r, int * b, int * weights, int * profits, int * capacities, int * setups, int * classes, int * indexes, char * modelFilename, char * logFilename, int TL, double *objval, double **x) {
+int solve(int n, int m, int r, int * b, int * weights, int * profits, int * capacities, int * setups, int * classes, int * indexes, char * modelFilename, char * logFilename, int TL) {
 
 	/*******************************************/
 	/*     set CPLEX environment and lp        */
@@ -14,6 +14,7 @@ int solve(int n, int m, int r, int * b, int * weights, int * profits, int * capa
 	CPXENVptr env;
 	CPXLPptr lp;
 	int status;
+	double objval;
 
 	/* open CPLEX environment
 	 * */
@@ -415,100 +416,6 @@ int solve(int n, int m, int r, int * b, int * weights, int * profits, int * capa
 	delete cnames;
 #endif
 
-	/*******************************************/
-	/*   change Upper/Lower bown with CPLEX    */
-	/*******************************************/
-	
-	bool allInt = true;
-	int indexBestValue = 0;
-	double bestValue = -1;
-	int *indices = new int[1];
-	double *bd = new double[1];
-	double *p = *x;
-
-	// check y*
-	for (int i = 0; i < m*r; i++) {
-		double value = p[m * n + i];
-		int truncatedValue = (int)value;
-
-		// if y* is 1
-		if (value == 1) {
-			bd[0] = 1;
-			indices[0] = m * n + i;
-			status = CPXchgbds(env, lp, 1, indices, "L", bd);
-			if (status) {
-				std::cout << "error: GMKP failed to change CPX bounds...exiting" << std::endl;
-				exit(1);
-			}
-		}
-		// find best value
-		else if (truncatedValue != value) {
-			allInt = false;
-			if (p[m * n + i] > bestValue) {
-				bestValue = p[m * n + i];
-				indexBestValue = m * n + i;
-			}
-
-		} // if truncated
-
-	} // for y*
-
-	// all y* are integers
-	// check x*
-	if (allInt) {
-
-		for (int i = 0; i < n*m; i++) {
-			double value = p[i];
-			int truncatedValue = (int)value;
-
-			// if x* is 1
-			if (value == 1) {
-				bd[0] = 1;
-				indices[0] = i;
-				status = CPXchgbds(env, lp, 1, indices, "L", bd);
-				if (status) {
-					std::cout << "error: GMKP failed to change CPX bounds...exiting" << std::endl;
-					exit(1);
-				}
-			}
-			// find best value
-			else if (truncatedValue != value) {
-				allInt = false;
-				if (p[i] > bestValue) {
-					bestValue = p[i];
-					indexBestValue = i;
-				}
-
-			} // if truncated
-
-		} // for x*
-
-	}
-
-	// there is a fractional value
-	if (!allInt) {
-		p[indexBestValue] = 1;
-
-		// check contraint 1
-		int statusCheck = checkSolution(p, *objval, n, m, r, b, weights, profits, capacities, setups, classes, indexes);
-
-		// solo il vincolo 1?
-		if (statusCheck == 1) {
-			bd[0] = 0;
-			indices[0] = indexBestValue;
-			status = CPXchgbds(env, lp, 1, indices, "U", bd);
-			if (status) {
-				std::cout << "error: GMKP failed to change CPX bounds...exiting" << std::endl;
-				exit(1);
-			}
-		}
-	}
-
-	delete[] indices;
-	delete[] bd;
-
-	//
-
 #ifdef WRITELP
 	status = CPXwriteprob(env, lp, modelFilename, NULL);
 	if (status) {
@@ -573,7 +480,7 @@ int solve(int n, int m, int r, int * b, int * weights, int * profits, int * capa
 	/* OBJECTIVE VALUE
 	 * access objective function value
 	 * */
-	status = CPXgetobjval(env, lp, objval);
+	status = CPXgetobjval(env, lp, &objval);
 	if (status) {
 		std::cout << "error: GMKP failed to obtain objective value...exiting" << std::endl;
 		exit(1);
@@ -590,75 +497,222 @@ int solve(int n, int m, int r, int * b, int * weights, int * profits, int * capa
 		exit(1);
 	}
 
-	/* CUT OFF
-	 * access the the MIP cutoff value being used during mixed integer optimization
-	 * the cutoff is updated with the objective function value,
-	 * each time an integer solution is found during branch and cut
-	 *  */
-	/*double cutoff_p;
-
-	status = CPXgetcutoff(env, lp, &cutoff_p);
-	if (status) {
-		std::cout << "error: GMKP failed to obtain MIP cutoff value...exiting" << std::endl;
-		exit(1);
-	}*/
-
-	/* RELATIVE GAP
-	 * access the relative objective gap for a MIP optimization
-	 * for a minimization problem, this value is computed by
-	 * (bestinteger - bestobjective) / (1e-10 + |bestinteger|)
-	 * where bestinteger is the value returned by CPXgetobjval
-	 * and bestobjective is the value returned by CPXgetbestobjval
-	 * for a maximization problem, the value is computed by
-	 * (bestobjective - bestinteger) / (1e-10 + |bestinteger|)
-	 * */
-
-	/*double gap_p;
-
-	status = CPXgetmiprelgap(env, lp, &gap_p);
-	if (status) {
-		std::cout << "error: GMKP failed to obtain relative objective gap...exiting" << std::endl;
-		exit(1);
-	}*/
-
-	/* NUMBER OF NODES
-	 * access the number of nodes used to solve a mixed integer problem
-	 * */
-	//int nnodes = CPXgetnodecnt(env, lp);
-
 	/*
 	* GET VECTOR X
 	* access the vector x to find solution
 	*/
 
-	*x = new double[ccnt];
+	double *x = new double[ccnt];
 
-	status = CPXsolution(env, lp, &solstat, &objval_p, *x, NULL, NULL, NULL);
+	status = CPXsolution(env, lp, &solstat, &objval_p, x, NULL, NULL, NULL);
 	if (status) {
 		std::cout << "error: GMKP failed to check contraints of solution...exiting" << std::endl;
 		exit(1);
 	}
 
-	int statusCheck = checkSolution(*x, *objval, n, m, r, b, weights, profits, capacities, setups, classes, indexes);
+	int statusCheck = checkSolution(x, objval, n, m, r, b, weights, profits, capacities, setups, classes, indexes);
 
-	if (statusCheck == 0) {
-		std::cout << "All constraints are ok" << std::endl;
+	if (statusCheck == 0)
+		std::cout << "Iteration 1: all constraints are ok" << std::endl;
+	else if (statusCheck == 1)
+		std::cout << "Iteration 1: constraint violated: weights of the items are greater than the capacity..." << std::endl;
+	else if (statusCheck == 2)
+		std::cout << "Iteration 1: constraint violated: item is assigned to more than one knapsack..." << std::endl;
+	else if (statusCheck == 3)
+		std::cout << "Iteration 1: constraint violated: class is assigned to more than one knapsack..." << std::endl;
+	else if (statusCheck == 4)
+		std::cout << "Iteration 1: constraint violated: items of class are not assigned to knapsack..." << std::endl;
+	else if (statusCheck == 5)
+		std::cout << "Iteration 1: optimal solution violeted..." << std::endl;
+
+	/*******************************************/
+	/*   change Upper/Lower bown with CPLEX    */
+	/*******************************************/
+
+	bool allInt = true;
+	int indexBestValue = 0;
+	double bestValue = -1;
+	int *indices = new int[1];
+	double *bd = new double[1];
+	int iteration = 2;
+
+	int truncated = (int)objval;
+	while (objval != truncated) {
+
+		allInt = true;
+		indexBestValue = 0;
+		bestValue = -1;
+
+		/*for (int i = 0; i < n*m + m * r; i++) {
+			std::cout << x[i] << std::endl;
+		}
+		printf("\n\n");*/
+
+		// check y*
+		for (int i = 0; i < m*r; i++) {
+			double value = x[m * n + i];
+			int truncatedValue = (int)value;
+
+			// if y* is 1
+			if (value == 1) {
+				bd[0] = 1;
+				indices[0] = m * n + i;
+				status = CPXchgbds(env, lp, 1, indices, "L", bd);
+				if (status) {
+					std::cout << "error: GMKP failed to change CPX bounds...exiting" << std::endl;
+					exit(1);
+				}
+			}
+			// find best value
+			else if (truncatedValue != value) {
+				allInt = false;
+				if (x[m * n + i] > bestValue) {
+					bestValue = x[m * n + i];
+					indexBestValue = m * n + i;
+				}
+
+			} // if truncated
+
+		} // for y*
+
+		// all y* are integers
+		// check x*
+		if (allInt) {
+
+			for (int i = 0; i < n*m; i++) {
+				double value = x[i];
+				int truncatedValue = (int)value;
+
+				// if x* is 1
+				if (value == 1) {
+					bd[0] = 1;
+					indices[0] = i;
+					status = CPXchgbds(env, lp, 1, indices, "L", bd);
+					if (status) {
+						std::cout << "error: GMKP failed to change CPX bounds...exiting" << std::endl;
+						exit(1);
+					}
+				}
+				// find best value
+				else if (truncatedValue != value) {
+					allInt = false;
+					if (x[i] > bestValue) {
+						bestValue = x[i];
+						indexBestValue = i;
+					}
+
+				} // if truncated
+
+			} // for x*
+
+		}
+
+		// there is a fractional value
+		if (!allInt) {
+			x[indexBestValue] = 1;
+
+			// check contraint 1
+			int statusCheck = checkSolution(x, objval, n, m, r, b, weights, profits, capacities, setups, classes, indexes);
+
+			if (statusCheck == 1) {
+				bd[0] = 0;
+				indices[0] = indexBestValue;
+				status = CPXchgbds(env, lp, 1, indices, "U", bd);
+				if (status) {
+					std::cout << "error: GMKP failed to change CPX bounds...exiting" << std::endl;
+					exit(1);
+				}
+			}
+		}
+
+		//
+
+#ifdef WRITELP
+		status = CPXwriteprob(env, lp, modelFilename, NULL);
+		if (status) {
+			std::cout << "error: GMKP failed to write MODEL file" << std::endl;
+		}
+#endif
+
+#ifdef WRITELOG
+		status = CPXsetlogfilename(env, logFilename, "w");
+		if (status) {
+			std::cout << "error: GMKP failed to write LOG file" << std::endl;
+		}
+#endif
+
+		/* solve with CPLEX "lpopt"
+		* */
+		status = CPXlpopt(env, lp);
+
+		if (status) {
+			std::cout << "error: GMKP failed to optimize...exiting" << std::endl;
+			exit(1);
+		}
+
+		/*******************************************/
+		/*  access CPLEX results                   */
+		/*******************************************/
+
+		/* SOLUTION STATUS
+		* access solution status
+		* */
+
+		solstat = CPXgetstat(env, lp);
+
+		/* OBJECTIVE VALUE
+		 * access objective function value
+		 * */
+		status = CPXgetobjval(env, lp, &objval);
+		if (status) {
+			std::cout << "error: GMKP failed to obtain objective value...exiting" << std::endl;
+			exit(1);
+		}
+
+		/* BEST BOUND
+		 * access the currently best known bound of all the remaining open nodes in a branch-and-bound tree
+		 * */
+
+		CPXgetbestobjval(env, lp, &objval_p);
+		if (status) {
+			std::cout << "error: GMKP failed to obtain best known bound...exiting" << std::endl;
+			exit(1);
+		}
+
+		status = CPXsolution(env, lp, &solstat, &objval_p, x, NULL, NULL, NULL);
+		if (status) {
+			std::cout << "error: GMKP failed to check contraints of solution...exiting" << std::endl;
+			exit(1);
+		}
+
+		statusCheck = checkSolution(x, objval, n, m, r, b, weights, profits, capacities, setups, classes, indexes);
+
+		if (statusCheck == 0)
+			std::cout << "Iteration " << iteration << ": all constraints are ok" << std::endl;
+		else if (statusCheck == 1)
+			std::cout << "Iteration " << iteration << ": constraint violated: weights of the items are greater than the capacity..." << std::endl;
+		else if (statusCheck == 2)
+			std::cout << "Iteration " << iteration << ": constraint violated: item is assigned to more than one knapsack..." << std::endl;
+		else if (statusCheck == 3)
+			std::cout << "Iteration " << iteration << ": constraint violated: class is assigned to more than one knapsack..." << std::endl;
+		else if (statusCheck == 4)
+			std::cout << "Iteration " << iteration << ": constraint violated: items of class are not assigned to knapsack..." << std::endl;
+		else if (statusCheck == 5)
+			std::cout << "Iteration " << iteration << ": optimal solution violeted..." << std::endl;
+
+		iteration++;
+
+		truncated = (int)objval;
 	}
-	else if (statusCheck == 1) {
-		std::cout << "Constraint violated: weights of the items are greater than the capacity..." << std::endl;
-	}
-	else if (statusCheck == 2) {
-		std::cout << "Constraint violated: item is assigned to more than one knapsack..." << std::endl;
-	}
-	else if (statusCheck == 3) {
-		std::cout << "Constraint violated: class is assigned to more than one knapsack..." << std::endl;
-	}
-	else if (statusCheck == 4) {
-		std::cout << "Constraint violated: items of class are not assigned to knapsack..." << std::endl;
-	}
-	else if (statusCheck == 5) {
-		std::cout << "Optimal solution violeted..." << std::endl;
-	}
+
+	// print output
+	std::cout << "Result: " << objval << std::endl;
+
+	delete[] x;
+	delete[] indices;
+	delete[] bd;
+
+	//
 
 	/*free CPLEX
 	 * */

@@ -4,7 +4,6 @@
 
 #include "INSTANCE.h"
 #include "LPBASED_CPX.h"
-#include "CHECK_CONS.h"
 
 using namespace std;
 
@@ -17,20 +16,20 @@ int main(int argc, char **argv)
 	}
 
 	// input parameters
-	char *instance_name = argv[1];
+	char *instanceName = argv[1];
 	int TL = atoi(argv[2]);
-	int stringLength = 0;
+	int instanceNameLength = 0;
 
 	bool ok = true;
 	while (ok) {
-		if (instance_name[stringLength] == '.')
+		if (instanceName[instanceNameLength] == '.')
 			ok = false;
 		else
-			stringLength++;
+			instanceNameLength++;
 	}
 
 	std::cout << "Input parameters: " << std::endl;
-	std::cout << "instance name: " << instance_name << std::endl;
+	std::cout << "instance name: " << instanceName << std::endl;
 	std::cout << std::endl;
 
 	// data for GMKP instance
@@ -47,14 +46,12 @@ int main(int argc, char **argv)
 
 	clock_t start, end;
 	double time;
-	double objval;
-	double *x = NULL;
 	
 	char modelFilename[200];
 	char logFilename[200];
 
 	// read file
-	int status = readInstance(instance_name, n, m, r, weights, capacities, profits, classes, indexes, setups, b);
+	int status = readInstance(instanceName, n, m, r, weights, capacities, profits, classes, indexes, setups, b);
 	if (status) {
 		std::cout << "File not found or not read correctly" << std::endl;
 		return -3;
@@ -62,44 +59,23 @@ int main(int argc, char **argv)
 
 	// model into a .lp file
 	strcpy(modelFilename, "models/");
-	strncat(modelFilename, instance_name, stringLength);
+	strncat(modelFilename, instanceName, instanceNameLength);
 	strcat(modelFilename, ".lp");
 
 	// log into a .txt file
 	strcpy(logFilename, "logs/");
-	strncat(logFilename, instance_name, stringLength);
+	strncat(logFilename, instanceName, instanceNameLength);
 	strcat(logFilename, ".txt");
 
 	printInstance(n, m, r, weights, capacities, profits, classes, indexes, setups, b);
 
-	status = solve(n, m, r, b, weights, profits, capacities, setups, classes, indexes, modelFilename, logFilename, TL, &objval, &x);
+	status = solve(n, m, r, b, weights, profits, capacities, setups, classes, indexes, modelFilename, logFilename, TL);
 
 	// print output
 	if (status)
 		std::cout << "An error has occurred! Error number : " << status << std::endl;
 	else
 		std::cout << "The function was performed correctly!" << std::endl;
-
-	int truncated = (int)objval;
-	while (objval != truncated) {
-
-		for (int i = 0; i < n*m + m*r; i++) {
-			std::cout << x[i] << std::endl;
-		}
-		printf("\n\n");
-
-		status = solve(n, m, r, b, weights, profits, capacities, setups, classes, indexes, modelFilename, logFilename, TL, &objval, &x);
-
-		// print output
-		if (status)
-			std::cout << "An error has occurred! Error number : " << status << std::endl;
-		else
-			std::cout << "The function was performed correctly!" << std::endl;
-
-		truncated = (int)objval;
-	}
-
-	std::cout << "Result: " << objval << std::endl;
 
 	// free memory
 	free(b);
@@ -109,7 +85,6 @@ int main(int argc, char **argv)
 	free(setups);
 	free(classes);
 	free(indexes);
-	free(x);
 
 	return 0;
 }

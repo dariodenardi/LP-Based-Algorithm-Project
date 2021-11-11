@@ -1,4 +1,4 @@
-#include "CHECK_CONS.h"
+#include "CHECK_CONS_V2.h"
 
 int checkSolution(double *x, double objval, int n, int m, int r, int * b, int * weights, int * profits, int * capacities, int * setups, int * classes, int * indexes) {
 
