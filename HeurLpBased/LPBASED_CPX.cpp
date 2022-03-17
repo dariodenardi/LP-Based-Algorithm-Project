@@ -15,6 +15,8 @@ int solve(int n, int m, int r, int * b, int * weights, int * profits, int * capa
 	CPXLPptr lp;
 	int status;
 	double objval;
+	clock_t start, end;
+	double time;
 
 	/* open CPLEX environment
 	 * */
@@ -459,7 +461,11 @@ int solve(int n, int m, int r, int * b, int * weights, int * profits, int * capa
 
 	/* solve with CPLEX "lpopt"
 	 * */
+	start = clock();
 	status = CPXlpopt(env, lp);
+	end = clock();
+	time = ((double)(end - start)) / CLOCKS_PER_SEC;
+
 
 	if (status) {
 		std::cout << "error: GMKP failed to optimize...exiting" << std::endl;
@@ -707,6 +713,7 @@ int solve(int n, int m, int r, int * b, int * weights, int * profits, int * capa
 
 	// print output
 	std::cout << "Result: " << objval << std::endl;
+	std::cout << "Elapsed time: " << time << std::endl;
 
 	delete[] x;
 	delete[] indices;
