@@ -31,9 +31,6 @@ message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 message(STATUS "Compiler version: ${CMAKE_CXX_COMPILER_VERSION}")
 
 ######## Set output directories.
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/build//bin)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/build/bin)
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/build/lib)
 
 ######## Set C++ 11 standard
 include(CheckCXXCompilerFlag)
@@ -70,3 +67,13 @@ file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/build/bin/${CREATE_DIR_MODELS})
 
 message(STATUS "Install directory: ${CREATE_DIR_INSTANCES}")
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/build/bin/${CREATE_DIR_INSTANCES})
+
+add_custom_command(TARGET HeurLpBased PRE_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_SOURCE_DIR}/models/ $<TARGET_FILE_DIR:HeurLpBased>/models)
+add_custom_command(TARGET HeurLpBased PRE_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_SOURCE_DIR}/logs/ $<TARGET_FILE_DIR:HeurLpBased>/logs)
+add_custom_command(TARGET HeurLpBased PRE_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_SOURCE_DIR}/instances/ $<TARGET_FILE_DIR:HeurLpBased>/instances)

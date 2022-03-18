@@ -14,7 +14,7 @@ endmacro()
 
 set(CPLEX_CONCERT_DIR ${CPLEX_STUDIO_DIR}/concert)
 if (APPLE)
-    set(CPLEX_CONCERT_DIR ${CPLEX_STUDIO_DIR}/concert)
+    set(CPLEX_CONCERT_DIR ${CPLEX_STUDIO_DIR}/../concert)
 endif()
 message(${CPLEX_CONCERT_DIR})
 # Find the Concert include directory.

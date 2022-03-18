@@ -34,7 +34,7 @@ int solve(int n, int m, int r, int * b, int * weights, int * profits, int * capa
 		exit(1);
 	}
 
-#ifdef DEBUG
+#ifndef NDEBUG
 	/* set CPLEX output ON
 	 * */
 	status = CPXsetintparam(env, CPX_PARAM_SCRIND, CPX_ON);
@@ -93,7 +93,7 @@ int solve(int n, int m, int r, int * b, int * weights, int * profits, int * capa
 	ub =  new double[ccnt];
 	ctype = new char[ccnt];
 
-#ifdef VARNAMES
+#ifndef NDEBUG
 	vnames = new char*[ccnt];
 	for (int i = 0; i < ccnt; i++)
 		vnames[i] = new char[100];
@@ -109,7 +109,7 @@ int solve(int n, int m, int r, int * b, int * weights, int * profits, int * capa
 			lb[col] = 0.0;
 			ub[col] = 1.0;
 
-#ifdef VARNAMES
+#ifndef NDEBUG
 			sprintf(vnames[col], "x_%d_%d", i + 1, j + 1);
 #endif
 			col++;
@@ -124,7 +124,7 @@ int solve(int n, int m, int r, int * b, int * weights, int * profits, int * capa
 			lb[col] = 0.0;
 			ub[col] = 1.0;
 
-#ifdef VARNAMES
+#ifndef NDEBUG
 			sprintf(vnames[col], "y_%d_%d", i + 1, k + 1);
 #endif
 			col++;
@@ -145,7 +145,7 @@ int solve(int n, int m, int r, int * b, int * weights, int * profits, int * capa
 	delete [] ub;
 	delete [] obj;
 	delete [] ctype;
-#ifdef VARNAMES
+#ifndef NDEBUG
 	for (int i = 0; i < ccnt; i++)
 		delete[] vnames[i];
 	delete vnames;
@@ -168,7 +168,7 @@ int solve(int n, int m, int r, int * b, int * weights, int * profits, int * capa
 	int *rmatind = new int[nzcnt];
 	double *rmatval = new double[nzcnt];
 
-#ifdef CONSNAMES
+#ifndef NDEBUG
 	cnames = new char*[rcnt];
 	for (int i = 0; i < rcnt; i++)
 		cnames[i] = new char[100];
@@ -198,7 +198,7 @@ int solve(int n, int m, int r, int * b, int * weights, int * profits, int * capa
 			cc++;
 		}
 
-#ifdef CONSNAMES
+#ifndef NDEBUG
 		sprintf(cnames[i], "capacity_%d", i + 1);
 #endif
 	}
@@ -217,7 +217,7 @@ int solve(int n, int m, int r, int * b, int * weights, int * profits, int * capa
 	delete[] rhs;
 	delete[] rmatind;
 	delete[] rmatval;
-#ifdef CONSNAMES
+#ifndef NDEBUG
 	for (int i = 0; i < rcnt; i++)
 		delete[] cnames[i];
 	delete cnames;
@@ -237,7 +237,7 @@ int solve(int n, int m, int r, int * b, int * weights, int * profits, int * capa
 	rmatind = new int[nzcnt];
 	rmatval = new double[nzcnt];
 
-#ifdef CONSNAMES
+#ifndef NDEBUG
 	cnames = new char*[rcnt];
 	for (int i = 0; i < rcnt; i++)
 		cnames[i] = new char[100];
@@ -259,7 +259,7 @@ int solve(int n, int m, int r, int * b, int * weights, int * profits, int * capa
 			cc++;
 		}
 
-#ifdef CONSNAMES
+#ifndef NDEBUG
 		sprintf(cnames[j], "max_one_bin_x_%d", j + 1);
 #endif
 	}
@@ -278,7 +278,7 @@ int solve(int n, int m, int r, int * b, int * weights, int * profits, int * capa
 	delete[] rhs;
 	delete[] rmatind;
 	delete[] rmatval;
-#ifdef CONSNAMES
+#ifndef NDEBUG
 	for (int i = 0; i < rcnt; i++)
 		delete[] cnames[i];
 	delete cnames;
@@ -298,7 +298,7 @@ int solve(int n, int m, int r, int * b, int * weights, int * profits, int * capa
 	rmatind = new int[nzcnt];
 	rmatval = new double[nzcnt];
 
-#ifdef CONSNAMES
+#ifndef NDEBUG
 	cnames = new char*[rcnt];
 	for (int i = 0; i < rcnt; i++)
 		cnames[i] = new char[100];
@@ -320,7 +320,7 @@ int solve(int n, int m, int r, int * b, int * weights, int * profits, int * capa
 			cc++;
 		}
 
-#ifdef CONSNAMES
+#ifndef NDEBUG
 		sprintf(cnames[k], "max_b_bin_y_%d", k + 1);
 #endif
 	}
@@ -339,7 +339,7 @@ int solve(int n, int m, int r, int * b, int * weights, int * profits, int * capa
 	delete[] rhs;
 	delete[] rmatind;
 	delete[] rmatval;
-#ifdef CONSNAMES
+#ifndef NDEBUG
 	for (int i = 0; i < rcnt; i++)
 		delete[] cnames[i];
 	delete cnames;
@@ -360,7 +360,7 @@ int solve(int n, int m, int r, int * b, int * weights, int * profits, int * capa
 	rmatind = new int[nzcnt];
 	rmatval = new double[nzcnt];
 
-#ifdef CONSNAMES
+#ifndef NDEBUG
 	cnames = new char*[rcnt];
 	for (int i = 0; i < rcnt; i++)
 		cnames[i] = new char[100];
@@ -388,7 +388,7 @@ int solve(int n, int m, int r, int * b, int * weights, int * profits, int * capa
 				rmatval[cc] = 1;
 				cc++;
 
-#ifdef CONSNAMES
+#ifndef NDEBUG
 				sprintf(cnames[prov2], "dependent_decision_%d", prov2 + 1);
 #endif
 
@@ -412,20 +412,20 @@ int solve(int n, int m, int r, int * b, int * weights, int * profits, int * capa
 	delete[] rhs;
 	delete[] rmatind;
 	delete[] rmatval;
-#ifdef CONSNAMES
+#ifndef NDEBUG
 	for (int i = 0; i < rcnt; i++)
 		delete[] cnames[i];
 	delete cnames;
 #endif
 
-#ifdef WRITELP
+#ifndef NDEBUG
 	status = CPXwriteprob(env, lp, modelFilename, NULL);
 	if (status) {
 		std::cout << "error: GMKP failed to write MODEL file" << std::endl;
 	}
 #endif
 
-#ifdef WRITELOG
+#ifndef NDEBUG
 	status = CPXsetlogfilename(env, logFilename, "w");
 	if (status) {
 		std::cout << "error: GMKP failed to write LOG file" << std::endl;
@@ -633,14 +633,14 @@ int solve(int n, int m, int r, int * b, int * weights, int * profits, int * capa
 
 		//
 
-#ifdef WRITELP
+#ifndef NDEBUG
 		status = CPXwriteprob(env, lp, modelFilename, NULL);
 		if (status) {
 			std::cout << "error: GMKP failed to write MODEL file" << std::endl;
 		}
 #endif
 
-#ifdef WRITELOG
+#ifndef NDEBUG
 		status = CPXsetlogfilename(env, logFilename, "w");
 		if (status) {
 			std::cout << "error: GMKP failed to write LOG file" << std::endl;
