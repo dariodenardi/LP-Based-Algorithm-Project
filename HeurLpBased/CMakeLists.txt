@@ -4,6 +4,10 @@ project(HeurLpBased)
 
 ######## Cplex Dependency
 find_package(CPLEX REQUIRED)
+find_package(CPLEX_CONCERT REQUIRED)
+find_package(CPLEX_ILOCPLEX REQUIRED)
+find_package(CPLEX_CP REQUIRED)
+
 if(CPLEX_FOUND)
     include_directories(${CPLEX_INCLUDE_DIR})
     link_directories(${CPLEX_LIBRARY})
