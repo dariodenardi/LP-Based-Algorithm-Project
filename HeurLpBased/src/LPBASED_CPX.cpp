@@ -603,6 +603,7 @@ int solve(int n, int m, int r, int * b, int * weights, int * profits, int * capa
 	int iteration = 2;
 
 	int truncated = (int)objval;
+    bool flag = false;
 	while (objval != truncated) {
 
 		allInt = true;
@@ -646,7 +647,28 @@ int solve(int n, int m, int r, int * b, int * weights, int * profits, int * capa
 
 		// check x*
 		if (allInt) { // check only if all y* are integers
-
+            if (!flag) {
+                for (int i = 0; i < m * r; i++) {
+                    if (x[m * n + i] == 0) {
+                        bd[0] = 0;
+                        indices[0] = m * n + i;
+                        status = CPXchgbds(env, lp, 1, indices, "B", bd);
+                        if (status) {
+                            std::cout << "error: GMKP failed to change CPX bounds...exiting" << std::endl;
+                            exit(1);
+                        }
+                    } else {
+                        bd[0] = 1;
+                        indices[0] = m * n + i;
+                        status = CPXchgbds(env, lp, 1, indices, "B", bd);
+                        if (status) {
+                            std::cout << "error: GMKP failed to change CPX bounds...exiting" << std::endl;
+                            exit(1);
+                        }
+                    }
+                }
+                flag = true;
+            }
 			for (int i = 0; i < n*m; i++) {
 				double value = x[i];
                 //std::cout << "x[" << i << "] = " << value << std::endl;
