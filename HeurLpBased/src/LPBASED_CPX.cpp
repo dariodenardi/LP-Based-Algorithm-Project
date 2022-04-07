@@ -1,10 +1,70 @@
 #include "LPBASED_CPX.h"
+#include <numeric>
 
-#define VARNAMES //use variable names
-#define CONSNAMES //use constraint names
-#define DEBUG //print cplex run on screen
-#define WRITELP //write lp problem to file
-#define WRITELOG //write log
+
+void printStatusMsg(int statusCheck, int iteration) {
+    if (statusCheck == 0)
+        std::cout << "Iteration " << iteration << ": all constraints are ok" << std::endl;
+    else if (statusCheck == 1)
+        std::cout << "Iteration " << iteration << ": constraint violated: weights of the items are greater than the capacity..." << std::endl;
+    else if (statusCheck == 2)
+        std::cout << "Iteration " << iteration << ": constraint violated: item is assigned to more than one knapsack..." << std::endl;
+    else if (statusCheck == 3)
+        std::cout << "Iteration " << iteration << ": constraint violated: class is assigned to more than one knapsack..." << std::endl;
+    else if (statusCheck == 4)
+        std::cout << "Iteration " << iteration << ": constraint violated: items of class are not assigned to knapsack..." << std::endl;
+    else if (statusCheck == 5)
+        std::cout << "Iteration " << iteration << ": optimal solution violated..." << std::endl;
+}
+
+void cplexComputeSolution(const cpxenv *env, cpxlp *lp, int &solstat, double *x, int &status, double &objval,
+                          double &objval_p) {
+    /* solve with CPLEX "lpopt" */
+    status = CPXlpopt(env, lp);
+    if (status) {
+        std::cout << "error: GMKP failed to optimize...exiting" << std::endl;
+        exit(1);
+    }
+    /*******************************************/
+    /*  access CPLEX results                   */
+    /*******************************************/
+
+    /* SOLUTION STATUS
+* access solution status
+* */
+
+    solstat = CPXgetstat(env, lp);
+
+    /* OBJECTIVE VALUE
+* access objective function value
+* */
+    status = CPXgetobjval(env, lp, &objval);
+    if (status) {
+        std::cout << "error: GMKP failed to obtain objective value...exiting" << std::endl;
+        exit(1);
+    }
+
+    /* BEST BOUND
+* access the currently best known bound of all the remaining open nodes in a branch-and-bound tree
+* */
+
+    status = CPXgetbestobjval(env, lp, &objval_p);
+    // https://github.com/jump-dev/CPLEX.jl/issues/355sign
+    if (status == CPXERR_NOT_MIP) {
+        status = CPXgetobjval(env, lp, &objval_p);
+    }
+    if (status) {
+        std::cout << "error: GMKP failed to obtain best known bound...exiting" << std::endl;
+        std::cout << "CPXgetbestobjval returned " << status << std::endl;
+        exit(1);
+    }
+
+    status = CPXsolution(env, lp, &solstat, &objval_p, x, NULL, NULL, NULL);
+    if (status) {
+        std::cout << "error: GMKP failed to check contraints of solution...exiting" << std::endl;
+        exit(1);
+    }
+}
 
 int solve(int n, int m, int r, int * b, int * weights, int * profits, int * capacities, int * setups, int * classes, int * indexes, char * modelFilename, char * logFilename, int TL) {
 
@@ -15,6 +75,8 @@ int solve(int n, int m, int r, int * b, int * weights, int * profits, int * capa
 	CPXLPptr lp;
 	int status;
 	double objval;
+	clock_t start, end;
+	double time;
 
 	/* open CPLEX environment
 	 * */
@@ -32,7 +94,7 @@ int solve(int n, int m, int r, int * b, int * weights, int * profits, int * capa
 		exit(1);
 	}
 
-#ifdef DEBUG
+#ifndef NDEBUG
 	/* set CPLEX output ON
 	 * */
 	status = CPXsetintparam(env, CPX_PARAM_SCRIND, CPX_ON);
@@ -91,7 +153,7 @@ int solve(int n, int m, int r, int * b, int * weights, int * profits, int * capa
 	ub =  new double[ccnt];
 	ctype = new char[ccnt];
 
-#ifdef VARNAMES
+#ifndef NDEBUG
 	vnames = new char*[ccnt];
 	for (int i = 0; i < ccnt; i++)
 		vnames[i] = new char[100];
@@ -107,7 +169,7 @@ int solve(int n, int m, int r, int * b, int * weights, int * profits, int * capa
 			lb[col] = 0.0;
 			ub[col] = 1.0;
 
-#ifdef VARNAMES
+#ifndef NDEBUG
 			sprintf(vnames[col], "x_%d_%d", i + 1, j + 1);
 #endif
 			col++;
@@ -122,7 +184,7 @@ int solve(int n, int m, int r, int * b, int * weights, int * profits, int * capa
 			lb[col] = 0.0;
 			ub[col] = 1.0;
 
-#ifdef VARNAMES
+#ifndef NDEBUG
 			sprintf(vnames[col], "y_%d_%d", i + 1, k + 1);
 #endif
 			col++;
@@ -143,7 +205,7 @@ int solve(int n, int m, int r, int * b, int * weights, int * profits, int * capa
 	delete [] ub;
 	delete [] obj;
 	delete [] ctype;
-#ifdef VARNAMES
+#ifndef NDEBUG
 	for (int i = 0; i < ccnt; i++)
 		delete[] vnames[i];
 	delete vnames;
@@ -166,7 +228,7 @@ int solve(int n, int m, int r, int * b, int * weights, int * profits, int * capa
 	int *rmatind = new int[nzcnt];
 	double *rmatval = new double[nzcnt];
 
-#ifdef CONSNAMES
+#ifndef NDEBUG
 	cnames = new char*[rcnt];
 	for (int i = 0; i < rcnt; i++)
 		cnames[i] = new char[100];
@@ -196,7 +258,7 @@ int solve(int n, int m, int r, int * b, int * weights, int * profits, int * capa
 			cc++;
 		}
 
-#ifdef CONSNAMES
+#ifndef NDEBUG
 		sprintf(cnames[i], "capacity_%d", i + 1);
 #endif
 	}
@@ -215,7 +277,7 @@ int solve(int n, int m, int r, int * b, int * weights, int * profits, int * capa
 	delete[] rhs;
 	delete[] rmatind;
 	delete[] rmatval;
-#ifdef CONSNAMES
+#ifndef NDEBUG
 	for (int i = 0; i < rcnt; i++)
 		delete[] cnames[i];
 	delete cnames;
@@ -235,7 +297,7 @@ int solve(int n, int m, int r, int * b, int * weights, int * profits, int * capa
 	rmatind = new int[nzcnt];
 	rmatval = new double[nzcnt];
 
-#ifdef CONSNAMES
+#ifndef NDEBUG
 	cnames = new char*[rcnt];
 	for (int i = 0; i < rcnt; i++)
 		cnames[i] = new char[100];
@@ -257,7 +319,7 @@ int solve(int n, int m, int r, int * b, int * weights, int * profits, int * capa
 			cc++;
 		}
 
-#ifdef CONSNAMES
+#ifndef NDEBUG
 		sprintf(cnames[j], "max_one_bin_x_%d", j + 1);
 #endif
 	}
@@ -276,7 +338,7 @@ int solve(int n, int m, int r, int * b, int * weights, int * profits, int * capa
 	delete[] rhs;
 	delete[] rmatind;
 	delete[] rmatval;
-#ifdef CONSNAMES
+#ifndef NDEBUG
 	for (int i = 0; i < rcnt; i++)
 		delete[] cnames[i];
 	delete cnames;
@@ -296,7 +358,7 @@ int solve(int n, int m, int r, int * b, int * weights, int * profits, int * capa
 	rmatind = new int[nzcnt];
 	rmatval = new double[nzcnt];
 
-#ifdef CONSNAMES
+#ifndef NDEBUG
 	cnames = new char*[rcnt];
 	for (int i = 0; i < rcnt; i++)
 		cnames[i] = new char[100];
@@ -318,7 +380,7 @@ int solve(int n, int m, int r, int * b, int * weights, int * profits, int * capa
 			cc++;
 		}
 
-#ifdef CONSNAMES
+#ifndef NDEBUG
 		sprintf(cnames[k], "max_b_bin_y_%d", k + 1);
 #endif
 	}
@@ -337,7 +399,7 @@ int solve(int n, int m, int r, int * b, int * weights, int * profits, int * capa
 	delete[] rhs;
 	delete[] rmatind;
 	delete[] rmatval;
-#ifdef CONSNAMES
+#ifndef NDEBUG
 	for (int i = 0; i < rcnt; i++)
 		delete[] cnames[i];
 	delete cnames;
@@ -358,7 +420,7 @@ int solve(int n, int m, int r, int * b, int * weights, int * profits, int * capa
 	rmatind = new int[nzcnt];
 	rmatval = new double[nzcnt];
 
-#ifdef CONSNAMES
+#ifndef NDEBUG
 	cnames = new char*[rcnt];
 	for (int i = 0; i < rcnt; i++)
 		cnames[i] = new char[100];
@@ -386,7 +448,7 @@ int solve(int n, int m, int r, int * b, int * weights, int * profits, int * capa
 				rmatval[cc] = 1;
 				cc++;
 
-#ifdef CONSNAMES
+#ifndef NDEBUG
 				sprintf(cnames[prov2], "dependent_decision_%d", prov2 + 1);
 #endif
 
@@ -410,20 +472,20 @@ int solve(int n, int m, int r, int * b, int * weights, int * profits, int * capa
 	delete[] rhs;
 	delete[] rmatind;
 	delete[] rmatval;
-#ifdef CONSNAMES
+#ifndef NDEBUG
 	for (int i = 0; i < rcnt; i++)
 		delete[] cnames[i];
 	delete cnames;
 #endif
 
-#ifdef WRITELP
+#ifndef NDEBUG
 	status = CPXwriteprob(env, lp, modelFilename, NULL);
 	if (status) {
 		std::cout << "error: GMKP failed to write MODEL file" << std::endl;
 	}
 #endif
 
-#ifdef WRITELOG
+#ifndef NDEBUG
 	status = CPXsetlogfilename(env, logFilename, "w");
 	if (status) {
 		std::cout << "error: GMKP failed to write LOG file" << std::endl;
@@ -459,7 +521,11 @@ int solve(int n, int m, int r, int * b, int * weights, int * profits, int * capa
 
 	/* solve with CPLEX "lpopt"
 	 * */
+	start = clock();
 	status = CPXlpopt(env, lp);
+	end = clock();
+	time = ((double)(end - start)) / CLOCKS_PER_SEC;
+
 
 	if (status) {
 		std::cout << "error: GMKP failed to optimize...exiting" << std::endl;
@@ -537,6 +603,7 @@ int solve(int n, int m, int r, int * b, int * weights, int * profits, int * capa
 	int iteration = 2;
 
 	int truncated = (int)objval;
+    bool flag = false;
 	while (objval != truncated) {
 
 		allInt = true;
@@ -551,6 +618,7 @@ int solve(int n, int m, int r, int * b, int * weights, int * profits, int * capa
 		// check y*
 		for (int i = 0; i < m*r; i++) {
 			double value = x[m * n + i];
+            //std::cout << "y[" << i << "] = " << value << std::endl;
 			int truncatedValue = (int)value;
 
 			// if y* is 1
@@ -564,7 +632,7 @@ int solve(int n, int m, int r, int * b, int * weights, int * profits, int * capa
 				}
 			}
 			// find best value
-			else if (truncatedValue != value) {
+			else if (double(truncatedValue) != value) {
 				allInt = false;
 				if (x[m * n + i] > bestValue) {
 					bestValue = x[m * n + i];
@@ -575,12 +643,35 @@ int solve(int n, int m, int r, int * b, int * weights, int * profits, int * capa
 
 		} // for y*
 
-		// all y* are integers
-		// check x*
-		if (allInt) {
 
+
+		// check x*
+		if (allInt) { // check only if all y* are integers
+            if (!flag) {
+                for (int i = 0; i < m * r; i++) {
+                    if (x[m * n + i] == 0) {
+                        bd[0] = 0;
+                        indices[0] = m * n + i;
+                        status = CPXchgbds(env, lp, 1, indices, "B", bd);
+                        if (status) {
+                            std::cout << "error: GMKP failed to change CPX bounds...exiting" << std::endl;
+                            exit(1);
+                        }
+                    } else {
+                        bd[0] = 1;
+                        indices[0] = m * n + i;
+                        status = CPXchgbds(env, lp, 1, indices, "B", bd);
+                        if (status) {
+                            std::cout << "error: GMKP failed to change CPX bounds...exiting" << std::endl;
+                            exit(1);
+                        }
+                    }
+                }
+                flag = true;
+            }
 			for (int i = 0; i < n*m; i++) {
 				double value = x[i];
+                //std::cout << "x[" << i << "] = " << value << std::endl;
 				int truncatedValue = (int)value;
 
 				// if x* is 1
@@ -594,7 +685,7 @@ int solve(int n, int m, int r, int * b, int * weights, int * profits, int * capa
 					}
 				}
 				// find best value
-				else if (truncatedValue != value) {
+				else if (double(truncatedValue) != value) {
 					allInt = false;
 					if (x[i] > bestValue) {
 						bestValue = x[i];
@@ -609,104 +700,67 @@ int solve(int n, int m, int r, int * b, int * weights, int * profits, int * capa
 
 		// there is a fractional value
 		if (!allInt) {
-			x[indexBestValue] = 1;
-
+            /*
+            if (indexBestValue < n * m) {
+                std::cout << "indexBestValue = " << indexBestValue << std::endl;
+            } else {
+                std::cout << "indexBestValue = " << indexBestValue - n * m << std::endl;
+            }
+            std::cout << "x[" << indexBestValue << "] = " << x[indexBestValue] << std::endl;
+            */
+            x[indexBestValue] = 1;
+            // std::cout << "x[" << indexBestValue << "] := " << x[indexBestValue] << std::endl;
 			// check contraint 1
 			int statusCheck = checkSolution(x, objval, n, m, r, b, weights, profits, capacities, setups, classes, indexes);
-
+            //std::cout << "statusCheck = " << statusCheck << std::endl;
 			if (statusCheck == 1) {
 				bd[0] = 0;
 				indices[0] = indexBestValue;
-				status = CPXchgbds(env, lp, 1, indices, "U", bd);
+				status = CPXchgbds(env, lp, 1, indices, "B", bd);
 				if (status) {
 					std::cout << "error: GMKP failed to change CPX bounds...exiting" << std::endl;
 					exit(1);
 				}
-			}
+			} else if (statusCheck == 0) {
+                bd[0] = 1;
+                indices[0] = indexBestValue;
+                status = CPXchgbds(env, lp, 1, indices, "B", bd);
+                if (status) {
+                    std::cout << "error: GMKP failed to change CPX bounds...exiting" << std::endl;
+                    exit(1);
+                }
+            }
 		}
 
 		//
 
-#ifdef WRITELP
+#ifndef NDEBUG
 		status = CPXwriteprob(env, lp, modelFilename, NULL);
 		if (status) {
 			std::cout << "error: GMKP failed to write MODEL file" << std::endl;
 		}
 #endif
 
-#ifdef WRITELOG
+#ifndef NDEBUG
 		status = CPXsetlogfilename(env, logFilename, "w");
 		if (status) {
 			std::cout << "error: GMKP failed to write LOG file" << std::endl;
 		}
 #endif
 
-		/* solve with CPLEX "lpopt"
-		* */
-		status = CPXlpopt(env, lp);
 
-		if (status) {
-			std::cout << "error: GMKP failed to optimize...exiting" << std::endl;
-			exit(1);
-		}
+        cplexComputeSolution(env, lp, solstat, x, status, objval, objval_p);
+        statusCheck = checkSolution(x, objval, n, m, r, b, weights, profits, capacities, setups, classes, indexes);
+        printStatusMsg(statusCheck, iteration);
 
-		/*******************************************/
-		/*  access CPLEX results                   */
-		/*******************************************/
-
-		/* SOLUTION STATUS
-		* access solution status
-		* */
-
-		solstat = CPXgetstat(env, lp);
-
-		/* OBJECTIVE VALUE
-		 * access objective function value
-		 * */
-		status = CPXgetobjval(env, lp, &objval);
-		if (status) {
-			std::cout << "error: GMKP failed to obtain objective value...exiting" << std::endl;
-			exit(1);
-		}
-
-		/* BEST BOUND
-		 * access the currently best known bound of all the remaining open nodes in a branch-and-bound tree
-		 * */
-
-		CPXgetbestobjval(env, lp, &objval_p);
-		if (status) {
-			std::cout << "error: GMKP failed to obtain best known bound...exiting" << std::endl;
-			exit(1);
-		}
-
-		status = CPXsolution(env, lp, &solstat, &objval_p, x, NULL, NULL, NULL);
-		if (status) {
-			std::cout << "error: GMKP failed to check contraints of solution...exiting" << std::endl;
-			exit(1);
-		}
-
-		statusCheck = checkSolution(x, objval, n, m, r, b, weights, profits, capacities, setups, classes, indexes);
-
-		if (statusCheck == 0)
-			std::cout << "Iteration " << iteration << ": all constraints are ok" << std::endl;
-		else if (statusCheck == 1)
-			std::cout << "Iteration " << iteration << ": constraint violated: weights of the items are greater than the capacity..." << std::endl;
-		else if (statusCheck == 2)
-			std::cout << "Iteration " << iteration << ": constraint violated: item is assigned to more than one knapsack..." << std::endl;
-		else if (statusCheck == 3)
-			std::cout << "Iteration " << iteration << ": constraint violated: class is assigned to more than one knapsack..." << std::endl;
-		else if (statusCheck == 4)
-			std::cout << "Iteration " << iteration << ": constraint violated: items of class are not assigned to knapsack..." << std::endl;
-		else if (statusCheck == 5)
-			std::cout << "Iteration " << iteration << ": optimal solution violeted..." << std::endl;
-
-		iteration++;
+        iteration++;
 
 		truncated = (int)objval;
 	}
 
 	// print output
 	std::cout << "Result: " << objval << std::endl;
+	std::cout << "Elapsed time: " << time << std::endl;
 
 	delete[] x;
 	delete[] indices;
@@ -714,8 +768,7 @@ int solve(int n, int m, int r, int * b, int * weights, int * profits, int * capa
 
 	//
 
-	/*free CPLEX
-	 * */
+	/* free CPLEX */
 	CPXfreeprob(env, &lp);
 
 	CPXcloseCPLEX(&env);
