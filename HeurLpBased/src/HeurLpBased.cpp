@@ -14,6 +14,7 @@ int main(int argc, char **argv)
 		std::cout << "parameters: [nameInstance] [timeout]\n";
 		return -1;
 	}
+    srand(50321);
 
 	// input parameters
 	char *instanceName = argv[1];

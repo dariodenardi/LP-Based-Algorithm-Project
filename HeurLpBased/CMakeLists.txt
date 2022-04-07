@@ -32,17 +32,17 @@ message(STATUS "Compiler version: ${CMAKE_CXX_COMPILER_VERSION}")
 
 ######## Set output directories.
 
-######## Set C++ 11 standard
+######## Set C++20 standard
 include(CheckCXXCompilerFlag)
-check_cxx_compiler_flag("-std=c++11" COMPILER_SUPPORTS_CXX11)
+check_cxx_compiler_flag("-std=c++20" COMPILER_SUPPORTS_CXX20)
 if (COMPILER_SUPPORTS_CXX11)
     if (CMAKE_COMPILER_IS_GNUCXX)
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++11")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++20")
     else ()
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20")
     endif ()
 else ()
-    message(STATUS "Fatal Error: Your compiler doesn't support c++11, please install it!")
+    message(STATUS "Fatal Error: Your compiler doesn't support c++20, please install it!")
 endif ()
 
 ######## find all the source files.
@@ -50,7 +50,7 @@ file(GLOB HEADER_FILES include/*.h)
 file(GLOB SOURCE_FILES src/*.cpp)
 
 ######## Set executable file name, and add the source files for it.
-add_executable(HeurLpBased ${HEADER_FILES} ${SOURCE_FILES})
+add_executable(HeurLpBased ${HEADER_FILES} ${SOURCE_FILES} src/PickSet.h)
 ######## Add Dependency Library
 target_link_libraries(HeurLpBased cplex-library cplex-concert ilocplex)
 
