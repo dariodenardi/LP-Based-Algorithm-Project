@@ -4,7 +4,7 @@ Implementation of a Heuristic Algorithm for GMKP problem with CPLEX APIs in C++
 
 ## Requirements
 
-* First, you must generate instaces with another program. See Dario's [project](https://github.com/dariodenardi/GMKP-Project).
+* First, you must generate instaces with [the other project](https://github.com/dariodenardi/GMKP-Project).
 
 ## Programs
 
